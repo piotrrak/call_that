@@ -88,7 +88,7 @@ public:
 
 // TODO: SFINAE disabler
 template <auto FPtr>
-constexpr auto setter_id()
+constexpr auto setter_id() noexcept
 {
    return that_call_id<FPtr>{};
 }

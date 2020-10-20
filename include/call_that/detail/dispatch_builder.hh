@@ -51,7 +51,8 @@ struct dispatch_builder
 
          auto& map = *static_cast<Map*>(uptr);
 
-         for (auto &cb : map[entry])
+         auto &cb = map[entry];
+         if (cb)
          {
             cb(std::forward<Args>(args)...);
          }

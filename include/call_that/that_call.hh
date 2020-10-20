@@ -119,8 +119,8 @@ std::size_t detach_all_cbs(callback_table<Callbacks...> &tbl, ThatTy* that)
    return inactive;
 }
 
-template <typename CallID, typename... Callbacks, typename Fn_>
-void on(callback_table<Callbacks...>& tbl, callback_entry<CallID> entry, Fn_ f)
+template <typename CallID, typename... Callbacks, typename Fn>
+void on(callback_table<Callbacks...>& tbl, callback_entry<CallID> entry, Fn f)
 {
    auto has_entry = detail::h::contains(tbl.map, entry);
 
@@ -131,10 +131,10 @@ void on(callback_table<Callbacks...>& tbl, callback_entry<CallID> entry, Fn_ f)
    // Type of std::function for c++ callback
    using function = typename decltype(+id.function_t())::type;
 
-   static_assert(std::is_constructible_v<function, Fn_>,
+   static_assert(std::is_constructible_v<function, Fn>,
                 "Signature of c++ function must be compatible");
 
-   tbl.map[entry].emplace_back(f);
+   tbl.map[entry] = function(static_cast<Fn&& >(f)); // forward
 }
 
 template <typename CallID, typename... Callbacks, typename Fn_,
@@ -145,47 +145,38 @@ void on(callback_table<Callbacks...>& tbl, CallID id, Fn_ f)
 }
 
 template <typename CallID, typename... Callbacks>
-std::size_t count_cbs(callback_table<Callbacks...>& tbl, callback_entry<CallID> entry)
+bool has_cb(callback_table<Callbacks...>& tbl, callback_entry<CallID> entry)
 {
    auto has_entry = detail::h::contains(tbl.map, entry);
 
    static_assert(has_entry, "Must have an entry for callback");
-   return tbl.map[entry].size();
+   return bool(tbl.map[entry]);
 }
-
 
 template <typename CallID, typename... Callbacks,
           typename = std::enable_if<detail::is_that_call_id(CallID{})>>
-std::size_t count_cbs(callback_table<Callbacks...>& tbl, CallID)
+bool has_cb(callback_table<Callbacks...>& tbl, CallID)
 {
-   return count_cbs(tbl, callback_entry<CallID>{});
+   return has_cb(tbl, callback_entry<CallID>{});
 }
 
 template <typename CallID, typename... Callbacks>
-std::size_t remove_cb(callback_table<Callbacks...>& tbl, callback_entry<CallID> entry, std::size_t index)
+auto remove_cb(callback_table<Callbacks...>& tbl, callback_entry<CallID> entry) noexcept
 {
    auto has_entry = detail::h::contains(tbl.map, entry);
 
    static_assert(has_entry, "Must have an entry for callback");
 
-   auto& callbacks = tbl.map[entry];
+   auto& callback = tbl.map[entry];
 
-   if (index >= callbacks.size())
-      throw std::out_of_range("callback index out of range");
-
-   auto it = callbacks.begin();
-   std::advance(it, index);
-
-   callbacks.erase(it);
-
-   return callbacks.size();
+   return std::move_if_noexcept(callback);
 }
 
 template <typename CallID, typename... Callbacks,
           typename = std::enable_if<detail::is_that_call_id(CallID{})>>
-std::size_t remove_cb(callback_table<Callbacks...>& tbl, CallID, std::size_t number)
+auto remove_cb(callback_table<Callbacks...>& tbl, CallID) noexcept
 {
-   return remove_cb(tbl, callback_entry<CallID>{}, number);
+   return remove_cb(tbl, callback_entry<CallID>{});
 }
 
 } // namespace call_that

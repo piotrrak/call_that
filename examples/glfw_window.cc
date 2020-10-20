@@ -82,8 +82,10 @@ int main()
    // Create window - todays test subject.
    auto window = setup_dummy_window();
 
-   // Create dispatch table for callbacks
+   // Create dispatch table for callbacks (same as allocate_dispatch_table(ids...))
    auto dispatch = std::make_unique<wnd_dispatch>();
+
+   assert(has_cb(*dispatch, wnd::fbsize_cb) == false && "Should have none");
 
    // Add callback that logs window fb_size changes dispatch table
    on(*dispatch, wnd::fbsize_cb, [wnd = window] (auto w, auto h) {
@@ -92,26 +94,24 @@ int main()
          << ": w = " << w << "; h = " << h << std::endl;
    });
 
-   assert(count_cbs(*dispatch, wnd::fbsize_cb) == 1 && "Should have one");
+   assert(has_cb(*dispatch, wnd::fbsize_cb) && "Should have one");
 
    // Add callback that logs window fb_size changes dispatch table
    on(*dispatch, wnd::size_cb, [] (size_t w, size_t h) {
       std::cout << "Window size w = " << w <<  "; h = " << h << std::endl;
    });
-   assert(count_cbs(*dispatch, wnd::size_cb) == 1);
+
+   assert(has_cb(*dispatch, wnd::size_cb) && "Should have one");
+
+   // Remove fb_size callback with index 1
+   auto prev = remove_cb(*dispatch, wnd::fbsize_cb);
 
    // Add dummy callback for fb_size
    on(*dispatch, wnd::fbsize_cb, [] (auto, auto) {});
+   assert(has_cb(*dispatch, wnd::fbsize_cb) && "Should have one");
 
-   // Ensure we have two callbacks for fb_size
-   assert(count_cbs(*dispatch, wnd::fbsize_cb) == 2);
-
-   // Remove fb_size callback with index 1
-   auto sz = remove_cb(*dispatch, wnd::fbsize_cb, 1);
-
-   // And check we have one...
-   assert(sz == 1);
-   assert(count_cbs(*dispatch, wnd::fbsize_cb) == 1);
+   on(*dispatch, wnd::fbsize_cb, std::move(prev));
+   assert(has_cb(*dispatch, wnd::fbsize_cb) && "Should have one");
 
    // Attach all callbacks and dispatch table to window instance
    attach_all_cbs(*dispatch, window);
@@ -132,7 +132,7 @@ int main()
 
    // Toggle on/off window size/fbsize callbacks on mouse button click.
    on(*dispatch, wnd::mouse_button_cb,
-      [&,on=false] (int button, int action, int mods) mutable {
+      [&, on=true] (int button, int action, int mods) mutable {
          if (action != GLFW_RELEASE) return;
 
          toggle_size_cbs(on = !on);
@@ -154,4 +154,3 @@ int main()
 
    return 0;
 }
-

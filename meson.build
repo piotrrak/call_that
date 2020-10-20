@@ -37,7 +37,7 @@ if get_option('build_examples')
    glfw_dep = dependency('glfw', version: '>=3.2.2', required: false)
 
    if not glfw_dep.found()
-      cmake = import('cmake')
+      cmake = get_variable('cmake', import('cmake'))
       glfw_opts = cmake.subproject_options()
       glfw_opts.add_cmake_defines({
         'GLFW_BUILD_DOCS': false,
@@ -51,8 +51,19 @@ if get_option('build_examples')
         dependencies: [dependency('glfw', required: true), cxx.find_library('dl')]
       )
    endif
+endif
 
-   subdir('examples')
+if get_option('build_tests')
+   cmake = get_variable('cmake', import('cmake'))
+   opts = cmake.subproject_options()
+   catch2_proj = cmake.subproject('catch2-git', options: opts)
+   message('CMaket targets:\n - ' + '\n - '.join(catch2_proj.target_list()))
+   catch2_cm_dep = catch2_proj.dependency('Catch2')
+   meson.override_dependency('catch2', catch2_cm_dep)
+   catch2_dep = dependency('catch2', required: true)
 endif
 
 call_that_dep = declare_dependency(include_directories: inc, dependencies: [hana_dep])
+
+subdir('examples')
+subdir('tests')

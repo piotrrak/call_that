@@ -25,11 +25,10 @@ namespace call_that {
 template<typename... IDs>
 struct callback_table<callback_entry<IDs>...>
 {
-   // Maps: callback_entry -> std::vector<std::function<...>>
+   // Maps: callback_entry -> std::function<...>
    detail::h::map<
      detail::h::pair<
-       callback_entry<IDs>,
-       std::vector<typename decltype(+IDs{}.function_t())::type>
+       callback_entry<IDs>, typename decltype(+IDs{}.function_t())::type
      >...
    > map;
 };
