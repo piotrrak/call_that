@@ -18,9 +18,29 @@ namespace call_that::detail {
 
 namespace h = boost::hana;
 
-auto is_that_call_id = h::is_valid([](auto && trialed) -> decltype(trialed.that_t()) {});
+auto is_that_call_id = h::is_valid(
+  [](auto && trialed) -> decltype(0, trialed.that_t(), trialed.function_t(), trialed.c_cb_t(), void()) {}
+);
+
+// Mimics std::integral_constant<typename T, T> - but it is not for integral types
+//
+// This lets us still meet Constant concept, yet with no goodies of being integral type
+//
+// See [meta.helper] std::integral_constant
+template <typename T, T v>
+struct constant
+{
+   inline static constexpr T value = v;
+
+   using value_type = T;
+   using type = constant<T, v>;
+
+   constexpr operator value_type() const noexcept { return value; }
+   constexpr value_type operator()() const noexcept { return value; }
+};
 
 }
+
 namespace call_that {
 
 // This bit overwhelming partial template specialization pattern-matches value of function pointer:
@@ -42,7 +62,7 @@ namespace call_that {
 // for given function pointer.
 template <typename ThatTy_, typename R_, typename RCb_, typename... CbArgs_,
            R_ (Setter) (ThatTy_*, RCb_ (*)(ThatTy_*, CbArgs_...))>
-struct that_call_id<Setter> : detail::h::integral_constant<decltype(Setter), Setter>
+struct that_call_id<Setter> : detail::constant<decltype(Setter), Setter>
 {
 private:
    using _that_type               = ThatTy_;
